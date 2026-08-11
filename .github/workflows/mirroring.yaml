@@ -1,0 +1,54 @@
+name: Mirror to coala-study joongheon folder
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: coala-study/coding-test
+          token: ${{ secrets.MIRROR_TOKEN }}
+          path: target
+
+      - name: Sync source into joongheon/ folder
+        run: |
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            source/ target/joongheon/
+
+      - name: Get source commit message
+        id: source_msg
+        run: |
+          cd source
+          MSG=$(git log -1 --pretty=%B)
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$MSG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Commit and push if changed
+        run: |
+          cd target
+          git config user.name "neetcode-mirror-bot"
+          git config user.email "actions@github.com"
+          git add joongheon/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "${{ steps.source_msg.outputs.message }}"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin main && break
+            echo "Retry $i..."
+            sleep 5
+          done
