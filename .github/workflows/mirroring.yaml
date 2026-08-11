@@ -13,6 +13,15 @@ jobs:
         with:
           path: source
 
+      - name: Debug token
+        env:
+          T: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          echo "token length: ${#T}"
+          curl -s -o /dev/null -w "%{http_code}\n" \
+            -H "Authorization: Bearer $T" \
+            https://api.github.com/repos/coala-study/coding-test
+            
       - name: Checkout target repo
         uses: actions/checkout@v4
         with:
